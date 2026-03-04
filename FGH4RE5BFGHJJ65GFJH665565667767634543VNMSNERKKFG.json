@@ -1,7 +1,7 @@
 {
-  "version": "1.0.1",
-  "last_updated": "2026-03-04",
-  "update_message": "🔧 Fixed Telegram button positioning\n✨ Added real loading logs\n📢 Update notification system",
+  "version": "4.0.7",
+  "last_updated": "2026-04-04",
+  "update_message": "🔧 UI spacing fixed\n✨ No more auto-close\n📢 Telegram link updated",
   "games": {
     "79546208627805": {
       "name": "99 Nights",
