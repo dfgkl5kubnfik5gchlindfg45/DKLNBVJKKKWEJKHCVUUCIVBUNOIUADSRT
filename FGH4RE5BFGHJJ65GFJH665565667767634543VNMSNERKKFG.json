@@ -1,7 +1,7 @@
 {
   "version": "4.0.7",
   "last_updated": "2026-04-04",
-  "update_message": "🔧 UI spacing fixed\n✨ No more auto-close\n📢 Telegram link updated",
+  "update_message": "added counterblox",
   "games": {
     "79546208627805": {
       "name": "99 Nights",
@@ -54,6 +54,10 @@
     "135434213652028": {
       "name": "Bloxstrike (Deathmatch)",
       "url": "https://raw.githubusercontent.com/markusmakegu-wq/sleirww/refs/heads/main/open"
+          },
+    "301549746": {
+      "name": "Counter Blox",
+      "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/DFGJKBHJKJ435GBVC.lua"
     }
   },
   "backup_urls": [
