@@ -70,7 +70,7 @@
   },
   "universal_trigger": {
     "enabled": true,
-    "trigger_words": ["uni", "universal"],
+    "trigger_words": ["uni", "universal", "sailor", "piece"],
     "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/universal.lua"
   },
   "backup_urls": [
