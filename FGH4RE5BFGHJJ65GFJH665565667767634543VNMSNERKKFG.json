@@ -1,7 +1,7 @@
 {
   "version": "4.0.7",
   "last_updated": "2026-04-04",
-  "update_message": "added counterblox",
+  "update_message": "added counterblox + universal script support",
   "games": {
     "79546208627805": {
       "name": "99 Nights",
@@ -54,19 +54,20 @@
     "135434213652028": {
       "name": "Bloxstrike (Deathmatch)",
       "url": "https://raw.githubusercontent.com/markusmakegu-wq/us1/refs/heads/main/ui"
-          },
+    },
     "301549746": {
       "name": "Counter Blox",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/DFGJKBHJKJ435GBVC.lua"
-                },
+    },
     "127794225497302": {
       "name": "Abyss",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/456hfgnvbvbctrd45e3gfhcvbbne56cbhxvvbcxndsftvxghbxvcersdt.lua"
-                    },
-    "127794225497302": {
-      "name": "uni",
-      "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/456hfgnvbvbctrd45e3gfhcvbbne56cbhxvvbcxndsftvxghbxvcersdt.lua"
     }
+  },
+  "universal_trigger": {
+    "enabled": true,
+    "trigger_words": ["uni", "universal", "sailor"],
+    "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/universal.lua"
   },
   "backup_urls": [
     "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/FGH4RE5BFGHJJ65GFJH665565667767634543VNMSNERKKFG.json"
