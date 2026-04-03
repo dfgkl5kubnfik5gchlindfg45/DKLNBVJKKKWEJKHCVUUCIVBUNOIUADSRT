@@ -1,9 +1,46 @@
+-- fenti external AC bundle — host as raw .lua; set FENTI_AC_MODULE_URL / _G.FENTI_AC_MODULE_URL in main.
+-- API: registerModule8, destroyStrike, setupStrikeWatch, stripACLIInFolder, lateInit
+-- Logging: print + _G.fentiACLog(cat, msg) once main assigns it (after banLog exists).
 
+local function acLog(cat, msg)
+    msg = tostring(msg or ""):sub(1, 420)
+    print("[fenti-ac] [" .. tostring(cat) .. "] " .. msg)
+    local fn = rawget(_G, "fentiACLog")
+    if type(fn) == "function" then
+        pcall(fn, cat, msg)
+    end
+end
 
 local function nameLooksACLI(name)
     if type(name) ~= "string" then return false end
     local n = string.lower(name)
     return string.find(n, "acli", 1, true) ~= nil or string.find(n, "adonis", 1, true) ~= nil
+end
+
+local function nameIsStrike(n)
+    return type(n) == "string" and string.lower(n) == "strike"
+end
+
+--- Returns number of instances destroyed (Strike / strike variants in RS tree).
+local function destroyStrike()
+    local RS = game:GetService("ReplicatedStorage")
+    local removed = 0
+    local function tryDestroy(inst, reason)
+        if not inst or not inst.Parent then return end
+        pcall(function()
+            acLog("STRIKE", "remove " .. reason .. " :: " .. inst:GetFullName() .. " (" .. inst.ClassName .. ")")
+            inst:Destroy()
+            removed = removed + 1
+        end)
+    end
+    pcall(function()
+        for _, d in ipairs(RS:GetDescendants()) do
+            if nameIsStrike(d.Name) then tryDestroy(d, "sweep") end
+        end
+        local s = RS:FindFirstChild("Strike", true)
+        if s then tryDestroy(s, "find") end
+    end)
+    return removed
 end
 
 local function registerModule8(FENTI_MODULE8_ENABLED)
@@ -15,9 +52,9 @@ local function registerModule8(FENTI_MODULE8_ENABLED)
             for _, obj in ipairs(folder:GetDescendants()) do
                 if obj:IsA("LocalScript") and nameLooksACLI(obj.Name) then
                     pcall(function()
+                        acLog("M8", "strip [" .. tostring(tag) .. "] " .. obj:GetFullName())
                         obj.Disabled = true
                         obj:Destroy()
-                        print("[fenti M8] " .. tostring(tag) .. " removed: " .. tostring(obj.Name))
                     end)
                 end
             end
@@ -30,9 +67,9 @@ local function registerModule8(FENTI_MODULE8_ENABLED)
             fentiModule8RFConn = rf.DescendantAdded:Connect(function(inst)
                 if inst:IsA("LocalScript") and nameLooksACLI(inst.Name) then
                     pcall(function()
+                        acLog("M8", "late RF remove " .. inst:GetFullName())
                         inst.Disabled = true
                         inst:Destroy()
-                        print("[fenti M8] ReplicatedFirst late remove: " .. tostring(inst.Name))
                     end)
                 end
             end)
@@ -40,6 +77,7 @@ local function registerModule8(FENTI_MODULE8_ENABLED)
     end
     local function fentiModule8Run(reason, quiet)
         if not FENTI_MODULE8_ENABLED then return end
+        acLog("M8", "run start (" .. tostring(reason or "?") .. ")")
         pcall(function()
             fentiModule8StripFolder(game:GetService("ReplicatedFirst"), "ReplicatedFirst")
             fentiModule8StripFolder(game:GetService("StarterGui"), "StarterGui")
@@ -51,7 +89,7 @@ local function registerModule8(FENTI_MODULE8_ENABLED)
             fentiModule8WatchReplicatedFirst()
         end)
         if not quiet then
-            print("[fenti M8] ACLI strip OK (" .. tostring(reason or "?") .. ")")
+            acLog("M8", "strip OK (" .. tostring(reason or "?") .. ")")
         end
     end
     _G.fentiModule8Run = fentiModule8Run
@@ -63,37 +101,56 @@ local function registerModule8(FENTI_MODULE8_ENABLED)
     end)
 end
 
-local function destroyStrike()
-    pcall(function()
-        local strike = game:GetService("ReplicatedStorage"):FindFirstChild("Strike", true)
-        if strike then strike:Destroy() end
-    end)
-end
-
 local function setupStrikeWatch(RS, UIS, FENTI_MODULE8_ENABLED)
     if not RS or not UIS then return false end
+    acLog("STRIKE", "setupStrikeWatch — RS + key8 + delayed sweeps")
+
+    local function sweep()
+        local n = destroyStrike()
+        if n > 0 then acLog("STRIKE", "sweep removed " .. tostring(n)) end
+    end
+
     task.defer(function()
-        destroyStrike()
+        sweep()
         if FENTI_MODULE8_ENABLED then pcall(function() _G.fentiModule8Run("defer") end) end
     end)
-    task.delay(8, function()
-        destroyStrike()
-        if FENTI_MODULE8_ENABLED then pcall(function() _G.fentiModule8Run("delay8+Strike") end) end
+
+    local strikeDelays = { 0.5, 1, 1.5, 2.5, 4, 6, 8, 12, 15, 22, 30, 45, 60, 90 }
+    for _, t in ipairs(strikeDelays) do
+        task.delay(t, function()
+            sweep()
+            if t == 8 and FENTI_MODULE8_ENABLED then pcall(function() _G.fentiModule8Run("delay8+Strike") end) end
+        end)
+    end
+
+    pcall(function()
+        RS.ChildAdded:Connect(function(inst)
+            if nameIsStrike(inst.Name) then
+                acLog("STRIKE", "ChildAdded hit → " .. inst:GetFullName())
+                pcall(function() inst:Destroy() end)
+            end
+        end)
     end)
     pcall(function()
         RS.DescendantAdded:Connect(function(inst)
-            if inst.Name == "Strike" then pcall(function() inst:Destroy() end) end
+            if nameIsStrike(inst.Name) then
+                acLog("STRIKE", "DescendantAdded hit → " .. inst:GetFullName())
+                pcall(function() inst:Destroy() end)
+            end
         end)
     end)
+
     pcall(function()
         UIS.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed then return end
             if input.KeyCode == Enum.KeyCode.Eight then
+                acLog("STRIKE", "key 8 manual sweep")
                 if FENTI_MODULE8_ENABLED then pcall(function() _G.fentiModule8Run("key8") end) end
-                destroyStrike()
+                sweep()
             end
         end)
     end)
+
     return true
 end
 
@@ -105,6 +162,7 @@ local function stripACLIInFolder(folder)
                 local ln = string.lower(d.Name)
                 if string.find(ln, "acli", 1, true) or string.find(ln, "adonis", 1, true) then
                     pcall(function()
+                        acLog("ACLI", "folder strip " .. d:GetFullName())
                         d.Disabled = true
                         d:Destroy()
                     end)
@@ -124,20 +182,31 @@ local function lateInit(ctx)
     local player = ctx.player
     local _isWave = ctx._isWave
     local _fentiSkipACMonitoring = ctx._fentiSkipACMonitoring
-    if not banLog or not RS or not Players or not player then return end
+    local acLogVerbose = ctx.acLogVerbose == true
+
+    if not banLog or not RS or not Players or not player then
+        acLog("AC-ERR", "lateInit missing ctx fields (banLog/RS/Players/player)")
+        return
+    end
+
+    acLog("AC-INIT", "lateInit start | Wave=" .. tostring(_isWave) .. " skipMon=" .. tostring(_fentiSkipACMonitoring) .. " verbose=" .. tostring(acLogVerbose))
 
     if not _isWave then
         pcall(function()
             local ps = Players.LocalPlayer:FindFirstChild("PlayerScripts")
             if ps then
+                local n = 0
                 for _, s in ipairs(ps:GetDescendants()) do
                     if s:IsA("LocalScript") or s:IsA("ModuleScript") then
                         local name = s.Name:lower()
                         if name:find("acli") or name:find("adonis") or name:find("anticheat") or name:find("anti_cheat") then
                             banLog("AC-DETECT", "Found AC script: " .. s:GetFullName())
+                            failLogWrite("[AC-DETECT] " .. s:GetFullName())
+                            n = n + 1
                         end
                     end
                 end
+                acLog("AC-SCAN", "PlayerScripts AC-like count=" .. tostring(n))
             end
         end)
     else
@@ -155,6 +224,7 @@ local function lateInit(ctx)
             end
             if #suspicious > 0 then
                 banLog("AC-INFO", "UUID remotes: " .. table.concat(suspicious, ", "))
+                failLogWrite("[AC-INFO] UUID remotes n=" .. #suspicious)
             end
         end
     end)
@@ -190,31 +260,40 @@ local function lateInit(ctx)
         pcall(function() collect(game:GetService("ReplicatedFirst"), "ReplicatedFirst") end)
         if #hits == 0 then
             banLog("AC-INFO", "No obfuscated-name ModuleScripts found under RS / ReplicatedFirst")
-            return
-        end
-        banLog("AC-INFO", "Found " .. #hits .. " ModuleScript(s) with underscore/long obfuscated names (may include TP / movers)")
-        for i = 1, math.min(#hits, maxShow) do
-            local h = hits[i]
-            local short = #h.name > 28 and (h.name:sub(1, 28) .. "…") or h.name
-            banLog("AC-INFO", "[" .. h.tag .. "] " .. short .. " → " .. h.path)
-        end
-        if #hits > maxShow then
-            banLog("AC-INFO", "… +" .. (#hits - maxShow) .. " more not listed (see Studio Explorer)")
+        else
+            banLog("AC-INFO", "Found " .. #hits .. " ModuleScript(s) with underscore/long obfuscated names (may include TP / movers)")
+            failLogWrite("[AC-INFO] obfuscated modules n=" .. #hits)
+            for i = 1, math.min(#hits, maxShow) do
+                local h = hits[i]
+                local short = #h.name > 28 and (h.name:sub(1, 28) .. "…") or h.name
+                banLog("AC-INFO", "[" .. h.tag .. "] " .. short .. " → " .. h.path)
+            end
+            if #hits > maxShow then
+                banLog("AC-INFO", "… +" .. (#hits - maxShow) .. " more not listed (see Studio Explorer)")
+            end
         end
     end)
 
     local _hookedAdonisDetectorFns = {}
-    local function _hookAdonisDetectorFn(fn)
+    local function _hookAdonisDetectorFn(fn, idx)
         if _hookedAdonisDetectorFns[fn] then return false end
         if not hookfunction or not newcclosure then return false end
-        local ok = pcall(function()
+        local ok, err = pcall(function()
             hookfunction(fn, newcclosure(function() return false end))
             _hookedAdonisDetectorFns[fn] = true
         end)
+        if ok then
+            failLogWrite("[BYPASS] hooked Adonis detector fn#" .. tostring(idx))
+        else
+            banLog("BYPASS", "Adonis hook FAIL fn#" .. tostring(idx) .. " :: " .. tostring(err))
+            failLogWrite("[BYPASS] FAIL fn#" .. tostring(idx) .. " " .. tostring(err))
+        end
         return ok
     end
 
-    local function _bypassAdonisInstanceDetectors()
+    local adonisMarkerKeys = { "indexInstance", "newindexInstance", "namecallInstance" }
+
+    local function _bypassAdonisInstanceDetectors(passLabel)
         if _isWave then
             banLog("BYPASS", "Adonis GC bypass skipped on this executor")
             return
@@ -225,16 +304,28 @@ local function lateInit(ctx)
         end
         local ok, err = pcall(function()
             local gc = getgc(true)
-            if not gc then return end
+            if not gc then
+                banLog("BYPASS", "Adonis pass " .. passLabel .. " — getgc() nil")
+                return
+            end
+            local gcLen = #gc
+            local tablesMatched = 0
             local passHooks = 0
-            for i = 1, math.min(#gc, 50000) do
+            local fnIdx = 0
+            for i = 1, math.min(gcLen, 55000) do
                 local v = gc[i]
                 if type(v) == "table" then
-                    local s, hasIdx = pcall(rawget, v, "indexInstance")
-                    if s and hasIdx then
+                    local matchedKey = nil
+                    for _, key in ipairs(adonisMarkerKeys) do
+                        local s, has = pcall(rawget, v, key)
+                        if s and has then matchedKey = key; break end
+                    end
+                    if matchedKey then
+                        tablesMatched = tablesMatched + 1
                         for _, a in pairs(v) do
                             if type(a) == "table" and type(a[2]) == "function" then
-                                if _hookAdonisDetectorFn(a[2]) then
+                                fnIdx = fnIdx + 1
+                                if _hookAdonisDetectorFn(a[2], fnIdx) then
                                     passHooks = passHooks + 1
                                 end
                             end
@@ -242,24 +333,30 @@ local function lateInit(ctx)
                     end
                 end
             end
+            banLog("BYPASS", "Adonis pass " .. passLabel .. " | gc=" .. gcLen .. " markerTables=" .. tablesMatched .. " newHooks=" .. passHooks)
+            failLogWrite(string.format("[BYPASS] %s gc=%d tables=%d hooks=%d", passLabel, gcLen, tablesMatched, passHooks))
             if passHooks > 0 then
                 _banLog._bypassHookCount = (_banLog._bypassHookCount or 0) + passHooks
                 _banLog._bypassDone = true
-                banLog("BYPASS", "Adonis detectors: +" .. passHooks .. " hook(s) (total " .. _banLog._bypassHookCount .. ") — silent aim namecall allowed")
+                banLog("BYPASS", "Adonis total hooks=" .. _banLog._bypassHookCount .. " — namecall path relaxed")
                 if _banLog._onBypassApplied then
                     pcall(_banLog._onBypassApplied)
                 end
             end
         end)
-        if not ok then banLog("BYPASS", "Adonis GC bypass error: " .. tostring(err)) end
+        if not ok then
+            banLog("BYPASS", "Adonis GC bypass error [" .. passLabel .. "]: " .. tostring(err))
+            failLogWrite("[BYPASS] error " .. passLabel .. " " .. tostring(err))
+        end
     end
-    task.delay(3, function() pcall(_bypassAdonisInstanceDetectors) end)
-    task.delay(6, function() pcall(_bypassAdonisInstanceDetectors) end)
-    task.delay(10, function() pcall(_bypassAdonisInstanceDetectors) end)
-    task.delay(18, function() pcall(_bypassAdonisInstanceDetectors) end)
+
+    local adonisSchedule = { 2, 4, 7, 12, 18, 25, 35, 50, 70, 95 }
+    for i, sec in ipairs(adonisSchedule) do
+        task.delay(sec, function() pcall(function() _bypassAdonisInstanceDetectors("t" .. sec .. "s#" .. i) end) end)
+    end
 
     if _fentiSkipACMonitoring then
-        pcall(function() banLog("AC-INFO", "UUID remote + LogService monitors OFF (avoids remote/LogService spoofcheck on Volt & similar)") end)
+        pcall(function() banLog("AC-INFO", "UUID remote + LogService monitors OFF (Volt/similar)") end)
     else
         pcall(function()
             local function isFullUuidName(n)
@@ -276,7 +373,7 @@ local function lateInit(ctx)
                     if fireCount <= 5 or fireCount % 10 == 0 then
                         local args = { ... }
                         local argSummary = {}
-                        for i, v in ipairs(args) do argSummary[i] = typeof(v) .. ":" .. tostring(v):sub(1, 40) end
+                        for j, val in ipairs(args) do argSummary[j] = typeof(val) .. ":" .. tostring(val):sub(1, 40) end
                         banLog("AC-HEARTBEAT", r.Name:sub(1, 8) .. "... #" .. fireCount .. " " .. table.concat(argSummary, ", "))
                     end
                 end)
@@ -311,6 +408,9 @@ local function lateInit(ctx)
                 if messageType == Enum.MessageType.MessageError then
                     failLogWrite("[SCRIPT_ERROR] " .. message:sub(1, 600))
                 end
+                if acLogVerbose then
+                    failLogWrite("[AC-RAW] (" .. tostring(messageType.Name) .. ") " .. message:sub(1, 500))
+                end
                 local function looksLikeGameAC(msgLower)
                     if msgLower:find("undetected", 1, true) then return false end
                     if msgLower:find("kicked", 1, true) or msgLower:find("kick you", 1, true) or msgLower:find("being kicked", 1, true) or msgLower:find("removed for", 1, true) then return true end
@@ -336,11 +436,14 @@ local function lateInit(ctx)
                     end
                     lastAlertTime = now
                     banLog("AC-ALERT", message:sub(1, 200))
+                    failLogWrite("[AC-ALERT] " .. message:sub(1, 400))
                 end
             end)
             table.insert(activeConnections, logConn)
         end)
     end
+
+    acLog("AC-INIT", "lateInit done")
 end
 
 return {
