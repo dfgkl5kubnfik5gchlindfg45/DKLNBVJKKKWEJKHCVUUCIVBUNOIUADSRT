@@ -1,4 +1,5 @@
 -- fenti external AC bundle — host as raw .lua; set FENTI_AC_MODULE_URL / _G.FENTI_AC_MODULE_URL in main.
+-- _G.FENTI_STRICT_MODE=true before load: skip Adonis getgc bypass; pair with hub FENTI_STRICT_MODE (disables M8 strip).
 -- API: registerModule8, destroyStrike, setupStrikeWatch, stripACLIInFolder, lateInit
 -- Logging: print + _G.fentiACLog(cat, msg) once main assigns it (after banLog exists).
 
@@ -44,7 +45,10 @@ local function destroyStrike()
 end
 
 local function registerModule8(FENTI_MODULE8_ENABLED)
-    if not FENTI_MODULE8_ENABLED then return end
+    if not FENTI_MODULE8_ENABLED then
+        _G.fentiModule8Run = function() end
+        return
+    end
     local fentiModule8RFConn = nil
     local function fentiModule8StripFolder(folder, tag)
         if not folder then return end
@@ -342,8 +346,10 @@ local function lateInit(ctx)
     end
 
     local adonisSchedule = { 2, 4, 7, 12, 18, 25, 35, 50, 70, 95 }
-    if rawget(_G, "FENTI_SKIP_ADONIS_GC") == true then
-        pcall(function() banLog("AC-INFO", "Adonis getgc/hookfunction bypass OFF (_G.FENTI_SKIP_ADONIS_GC)") end)
+    if rawget(_G, "FENTI_SKIP_ADONIS_GC") == true or rawget(_G, "FENTI_STRICT_MODE") == true then
+        pcall(function()
+            banLog("AC-INFO", "Adonis getgc/hookfunction bypass OFF (" .. (rawget(_G, "FENTI_STRICT_MODE") == true and "FENTI_STRICT_MODE" or "FENTI_SKIP_ADONIS_GC") .. ")")
+        end)
     else
         for i, sec in ipairs(adonisSchedule) do
             task.delay(sec, function() pcall(function() _bypassAdonisInstanceDetectors("t" .. sec .. "s#" .. i) end) end)
