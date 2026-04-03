@@ -342,13 +342,18 @@ local function lateInit(ctx)
     end
 
     local adonisSchedule = { 2, 4, 7, 12, 18, 25, 35, 50, 70, 95 }
-    for i, sec in ipairs(adonisSchedule) do
-        task.delay(sec, function() pcall(function() _bypassAdonisInstanceDetectors("t" .. sec .. "s#" .. i) end) end)
+    if rawget(_G, "FENTI_SKIP_ADONIS_GC") == true then
+        pcall(function() banLog("AC-INFO", "Adonis getgc/hookfunction bypass OFF (_G.FENTI_SKIP_ADONIS_GC)") end)
+    else
+        for i, sec in ipairs(adonisSchedule) do
+            task.delay(sec, function() pcall(function() _bypassAdonisInstanceDetectors("t" .. sec .. "s#" .. i) end) end)
+        end
     end
 
     if _fentiSkipACMonitoring then
         pcall(function() banLog("AC-INFO", "UUID remote + LogService monitors OFF (spoofcheck-sensitive runtime)") end)
     else
+        do
         pcall(function()
             local function isFullUuidName(n)
                 return type(n) == "string" and #n == 36 and n:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x$")
@@ -432,6 +437,7 @@ local function lateInit(ctx)
             end)
             table.insert(activeConnections, logConn)
         end)
+        end
     end
 
     acLog("AC-INIT", "lateInit done")
@@ -444,4 +450,3 @@ return {
     stripACLIInFolder = stripACLIInFolder,
     lateInit = lateInit,
 }
-
