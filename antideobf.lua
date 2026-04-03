@@ -1,4 +1,3 @@
--- Kick with custom message
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
