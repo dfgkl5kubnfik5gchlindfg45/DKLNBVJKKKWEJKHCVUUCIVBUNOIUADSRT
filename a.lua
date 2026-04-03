@@ -1,7 +1,17 @@
 -- fenti external AC bundle — host as raw .lua; set FENTI_AC_MODULE_URL / _G.FENTI_AC_MODULE_URL in main.
 -- _G.FENTI_STRICT_MODE=true before load: skip Adonis getgc bypass; pair with hub FENTI_STRICT_MODE (disables M8 strip).
--- API: registerModule8, destroyStrike, setupStrikeWatch, stripACLIInFolder, lateInit
+-- API: registerModule8, destroyStrike, setupStrikeWatch, stripACLIInFolder, lateInit,
+--      optionalVersionCheck, aggressiveDestroy, nilRemoteSweep
 -- Logging: print + _G.fentiACLog(cat, msg) once main assigns it (after banLog exists).
+--
+-- Optional “full” bypass (your standalone snippet, adapted — enable explicitly; can break games):
+--   _G.FENTI_AC_VERSION_URL = "https://.../version.lua"  → HttpGet + load(); must return a number
+--   _G.FENTI_AC_EXPECTED_VERSION = 5
+--   _G.FENTI_AC_VERSION_KICK = true  → kick LocalPlayer on mismatch (default: warn only)
+--   _G.FENTI_AC_AGGRESSIVE_DESTROY = true  → Destroy() matching instances under entire game (see fentiAcAggressiveDestroy)
+--   _G.FENTI_AC_AGGRESSIVE_NIL_REMOTES = true  → destroy nil-parent remotes matching names (see fentiAcNilRemoteSweep)
+--   _G.FENTI_AC_ADONIS_AGGRESSIVE = true  → Adonis marker tables: hook every function in the table graph (islclosure)
+--                                           with coroutine.close dummy; default path only hooks {fn} detector slots (return false).
 
 local function acLog(cat, msg)
     msg = tostring(msg or ""):sub(1, 420)
@@ -20,6 +30,156 @@ end
 
 local function nameIsStrike(n)
     return type(n) == "string" and string.lower(n) == "strike"
+end
+
+local function fentiAcHttpGet(url)
+    local ok, body = pcall(function()
+        return game:HttpGet(url, true)
+    end)
+    if ok and type(body) == "string" and body ~= "" then return body end
+    local req = (syn and syn.request) or (http and http.request) or http_request or request or fluxus_request
+    if not req then return nil end
+    local ok2, res = pcall(function()
+        return req({ Url = url, Method = "GET" })
+    end)
+    if ok2 and type(res) == "table" and type(res.Body) == "string" and res.Body ~= "" then return res.Body end
+    return nil
+end
+
+--- Optional remote version (gist returns loadable chunk → number). Kicks only if _G.FENTI_AC_VERSION_KICK.
+local function fentiAcOptionalVersionCheck(banLog, failLogWrite, player)
+    local url = rawget(_G, "FENTI_AC_VERSION_URL")
+    if type(url) ~= "string" or url == "" then return end
+    local expected = rawget(_G, "FENTI_AC_EXPECTED_VERSION")
+    if type(expected) ~= "number" then expected = 0 end
+    local sep = string.find(url, "?", 1, true) and "&" or "?"
+    local full = url .. sep .. "t=" .. tostring(tick())
+    local body = fentiAcHttpGet(full)
+    if not body then
+        acLog("VERSION", "AC module: version URL failed")
+        if banLog then banLog("VERSION", "AC module version check — no body") end
+        if failLogWrite then failLogWrite("[AC-VERSION] no body") end
+        return
+    end
+    local compile = loadstring or load
+    if type(compile) ~= "function" then return end
+    local chunk, cerr = compile(body)
+    if type(chunk) ~= "function" then
+        acLog("VERSION", "AC module: version script compile failed")
+        return
+    end
+    local ok, remoteVer = pcall(chunk)
+    if not ok or type(remoteVer) ~= "number" then
+        acLog("VERSION", "AC module: version run failed")
+        return
+    end
+    acLog("VERSION", "remote=" .. tostring(remoteVer) .. " expected=" .. tostring(expected))
+    if banLog then banLog("VERSION", "AC module remote=" .. tostring(remoteVer) .. " expected=" .. tostring(expected)) end
+    if remoteVer ~= expected then
+        local msg = "Script outdated (AC module version check)."
+        if rawget(_G, "FENTI_AC_VERSION_KICK") == true and player then
+            player:Kick(msg)
+        end
+    end
+end
+
+local function nameMatchesAggressiveDestroy(inst)
+    if not inst or type(inst.Name) ~= "string" then return false end
+    local n = inst.Name
+    if n == "__FUNCTION" or n == "ClientMover" or n == "Strike" or n == "OnHitEvent" then return true end
+    local l = string.lower(n)
+    if string.find(l, "adonis", 1, true) then return true end
+    return false
+end
+
+--- Whole-game descendant sweep (your snippet). Extremely unsafe for gameplay.
+local function fentiAcAggressiveDestroy(banLog, failLogWrite)
+    if rawget(_G, "FENTI_AC_AGGRESSIVE_DESTROY") ~= true then return 0 end
+    local removed = 0
+    pcall(function()
+        for _, v in pairs(game:GetDescendants()) do
+            if nameMatchesAggressiveDestroy(v) then
+                pcall(function()
+                    local full = v:GetFullName()
+                    v:Destroy()
+                    removed = removed + 1
+                    acLog("AGGRESSIVE", "destroy " .. full)
+                    if failLogWrite then failLogWrite("[AGGRESSIVE] " .. full) end
+                end)
+            end
+        end
+    end)
+    if banLog and removed > 0 then banLog("AC-SWEEP", "aggressive destroy count=" .. tostring(removed)) end
+    return removed
+end
+
+local function fentiAcNilRemoteSweep(banLog, failLogWrite)
+    if rawget(_G, "FENTI_AC_AGGRESSIVE_NIL_REMOTES") ~= true then return 0 end
+    if type(getnilinstances) ~= "function" then return 0 end
+    local removed = 0
+    pcall(function()
+        for _, v in pairs(getnilinstances()) do
+            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                local n = v.Name
+                if type(n) == "string" and (string.find(n, "ClientMover", 1, true) or n == "__FUNCTION") then
+                    pcall(function()
+                        v:Destroy()
+                        removed = removed + 1
+                        acLog("NIL-REMOTE", "destroy " .. n)
+                        if failLogWrite then failLogWrite("[NIL-REMOTE] " .. n) end
+                    end)
+                end
+            end
+        end
+    end)
+    if banLog and removed > 0 then banLog("AC-SWEEP", "nil remote destroy count=" .. tostring(removed)) end
+    return removed
+end
+
+local function functionIsLikelyLClosure(fn)
+    if type(fn) ~= "function" then return false end
+    if type(islclosure) == "function" then
+        local ok, isL = pcall(islclosure, fn)
+        if ok then return isL == true end
+    end
+    return true
+end
+
+--- BFS all tables reachable from an Adonis marker root; hook each Lua function once (aggressive path).
+local function hookAdonisTableGraphAggressive(rootTable, hookedFns, banLog, failLogWrite)
+    if type(rootTable) ~= "table" or not hookfunction or not newcclosure then return 0 end
+    local count = 0
+    local seenT = {}
+    local seenF = hookedFns or {}
+    local queue = { rootTable }
+    while #queue > 0 do
+        local t = table.remove(queue)
+        if type(t) == "table" and not seenT[t] then
+        seenT[t] = true
+        for _, val in pairs(t) do
+            local vt = type(val)
+            if vt == "function" then
+                if not seenF[val] and functionIsLikelyLClosure(val) then
+                    local ok = pcall(function()
+                        hookfunction(val, newcclosure(function()
+                            pcall(coroutine.close, coroutine.running())
+                        end))
+                    end)
+                    if ok then
+                        seenF[val] = true
+                        count = count + 1
+                        if failLogWrite then failLogWrite("[BYPASS] Adonis aggressive hook fn#" .. tostring(count)) end
+                    elseif banLog then
+                        banLog("BYPASS", "Adonis aggressive hook FAIL")
+                    end
+                end
+            elseif vt == "table" and not seenT[val] then
+                table.insert(queue, val)
+            end
+        end
+        end
+    end
+    return count
 end
 
 --- Returns number of instances destroyed (Strike / strike variants in RS tree).
@@ -194,6 +354,18 @@ local function lateInit(ctx)
 
     acLog("AC-INIT", "lateInit start | skipMon=" .. tostring(_fentiSkipACMonitoring) .. " verbose=" .. tostring(acLogVerbose))
 
+    pcall(function() fentiAcOptionalVersionCheck(banLog, failLogWrite, player) end)
+    task.defer(function()
+        pcall(function() fentiAcAggressiveDestroy(banLog, failLogWrite) end)
+        pcall(function() fentiAcNilRemoteSweep(banLog, failLogWrite) end)
+    end)
+    for _, td in ipairs({ 2, 5, 10, 18 }) do
+        task.delay(td, function()
+            pcall(function() fentiAcAggressiveDestroy(banLog, failLogWrite) end)
+            pcall(function() fentiAcNilRemoteSweep(banLog, failLogWrite) end)
+        end)
+    end
+
     pcall(function()
         local ps = Players.LocalPlayer:FindFirstChild("PlayerScripts")
         if ps then
@@ -317,11 +489,18 @@ local function lateInit(ctx)
                     end
                     if matchedKey then
                         tablesMatched = tablesMatched + 1
-                        for _, a in pairs(v) do
-                            if type(a) == "table" and type(a[2]) == "function" then
-                                fnIdx = fnIdx + 1
-                                if _hookAdonisDetectorFn(a[2], fnIdx) then
-                                    passHooks = passHooks + 1
+                        local aggressive = rawget(_G, "FENTI_AC_ADONIS_AGGRESSIVE") == true
+                        local ni = rawget(v, "newindexInstance")
+                        local isKickTable = type(ni) == "table" and ni[1] == "kick"
+                        if aggressive and isKickTable then
+                            passHooks = passHooks + hookAdonisTableGraphAggressive(v, _hookedAdonisDetectorFns, banLog, failLogWrite)
+                        else
+                            for _, a in pairs(v) do
+                                if type(a) == "table" and type(a[2]) == "function" then
+                                    fnIdx = fnIdx + 1
+                                    if _hookAdonisDetectorFn(a[2], fnIdx) then
+                                        passHooks = passHooks + 1
+                                    end
                                 end
                             end
                         end
@@ -455,4 +634,7 @@ return {
     setupStrikeWatch = setupStrikeWatch,
     stripACLIInFolder = stripACLIInFolder,
     lateInit = lateInit,
+    optionalVersionCheck = fentiAcOptionalVersionCheck,
+    aggressiveDestroy = fentiAcAggressiveDestroy,
+    nilRemoteSweep = fentiAcNilRemoteSweep,
 }
