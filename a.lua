@@ -1,9 +1,25 @@
--- fenti AC bypass (host on GitHub raw; load via _G.FENTI_AC_MODULE_URL + _G.FENTI_ALLOW_EXTERNAL_AC=true).
+-- fenti AC bypass (host on GitHub raw; inject via external loader or _G.FENTI_FETCH_AC_MODULE_URL in hub).
 -- Tuning: _G.FENTI_SAFE_AC, FENTI_STRICT_MODE, FENTI_ENABLE_MODULE8, FENTI_ENABLE_ADONIS_GC, FENTI_FORCE_ADONIS_GC,
 -- FENTI_TREE_DESTROY_PASS, FENTI_NIL_DESTROY_PASS, FENTI_AGGRESSIVE_INSTANCE_SWEEP, FENTI_M8_PERIOD_SEC, etc.
+-- _G.FENTI_AC_SILENT = true — skip the one success print() (reduces console noise / string exposure).
+
+local function _fentiC(...)
+    return string.char(...)
+end
+-- Runtime-built tokens (string.char) — keeps sensitive instance/class names out of naive string dumps.
+local _FN = {
+    strike = _fentiC(115, 116, 114, 105, 107, 101),
+    Strike = _fentiC(83, 116, 114, 105, 107, 101),
+    dunderFunc = _fentiC(95, 95, 70, 85, 78, 67, 84, 73, 79, 78),
+    ClientMover = _fentiC(67, 108, 105, 101, 110, 116, 77, 111, 118, 101, 114),
+    OnHitEvent = _fentiC(79, 110, 72, 105, 116, 69, 118, 101, 110, 116),
+    RemoteEvent = _fentiC(82, 101, 109, 111, 116, 101, 69, 118, 101, 110, 116),
+    RemoteFunction = _fentiC(82, 101, 109, 111, 116, 101, 70, 117, 110, 99, 116, 105, 111, 110),
+    UnreliableRemoteEvent = _fentiC(85, 110, 114, 101, 108, 105, 97, 98, 108, 101, 82, 101, 109, 111, 116, 101, 69, 118, 101, 110, 116),
+}
 
 local function fentiStrikeNameMatch(n)
-    return type(n) == "string" and string.lower(n) == "strike"
+    return type(n) == "string" and string.lower(n) == _FN.strike
 end
 
 local function _fentiM8NameLooksACLI(name)
@@ -23,7 +39,6 @@ local function fentiModule8StripFolder(folder, tag)
                 pcall(function()
                     obj.Disabled = true
                     obj:Destroy()
-                    print("[fenti M8] " .. tostring(tag) .. " removed: " .. tostring(obj.Name))
                 end)
             end
         end
@@ -39,7 +54,6 @@ local function fentiModule8WatchReplicatedFirst()
                 pcall(function()
                     inst.Disabled = true
                     inst:Destroy()
-                    print("[fenti M8] ReplicatedFirst late remove: " .. tostring(inst.Name))
                 end)
             end
         end)
@@ -58,18 +72,13 @@ local function fentiModule8Run(reason, quiet)
         end
         fentiModule8WatchReplicatedFirst()
     end)
-    if not quiet then
-        print("[fenti M8] ACLI strip OK (" .. tostring(reason or "?") .. ")")
-    end
 end
 
 local API = {}
 
 function API.earlyPass()
     local Executor = (type(identifyexecutor) == "function" and identifyexecutor()) or "Unknown"
-    if Executor == "Solara" or Executor == "Xeno" then
-        warn("[fenti-ac] Skipping getgc Adonis hook on this executor.")
-    else
+    if Executor ~= "Solara" and Executor ~= "Xeno" then
         local function Hook_Adonis(meta_defs)
             if type(meta_defs) ~= "table" then return end
             for _, tbl in pairs(meta_defs) do
@@ -98,30 +107,29 @@ function API.earlyPass()
                     local ni = rawget(v, "newindexInstance")
                     if ni[1] == "kick" then
                         Hook_Adonis(v)
-                        print("[fenti-ac] Adonis meta_defs hook applied")
                     end
                 end
             end
         end)
-        print("[fenti-ac] getgc AC pass done")
     end
     pcall(function()
         for _, v in pairs(game:GetDescendants()) do
-            if v.Name == "__FUNCTION" or v.Name == "ClientMover" or (type(v.Name) == "string" and v.Name:lower():match("adonis")) or v.Name == "Strike" or v.Name == "OnHitEvent" then
+            if v.Name == _FN.dunderFunc or v.Name == _FN.ClientMover or (type(v.Name) == "string" and v.Name:lower():match("adonis")) or v.Name == _FN.Strike or v.Name == _FN.OnHitEvent then
                 v:Destroy()
-                print("[fenti-ac] Destroyed anticheat instance: " .. tostring(v.Name))
             end
         end
     end)
     pcall(function()
         if type(getnilinstances) ~= "function" then return end
         for _, v in pairs(getnilinstances()) do
-            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or (type(v.Name) == "string" and v.Name:match("ClientMover")) or v.Name == "__FUNCTION" then
+            if v:IsA(_FN.RemoteEvent) or v:IsA(_FN.RemoteFunction) or (type(v.Name) == "string" and string.find(v.Name, _FN.ClientMover, 1, true)) or v.Name == _FN.dunderFunc then
                 v:Destroy()
-                print("[fenti-ac] Destroyed nil remote: " .. tostring(v.Name))
             end
         end
     end)
+    if rawget(_G, "FENTI_AC_SILENT") ~= true then
+        print(_fentiC(91, 102, 101, 110, 116, 105, 93, 32, 66, 121, 112, 97, 115, 115, 32, 45, 32, 115, 117, 99, 99, 101, 115, 115))
+    end
 end
 
 function API.registerModule8(enabled)
@@ -145,14 +153,13 @@ function API.destroyStrike()
         local function zap(inst, why)
             if not inst or not inst.Parent then return end
             local msg = "remove " .. why .. " :: " .. inst:GetFullName() .. " (" .. inst.ClassName .. ")"
-            print("[fenti-ac] [STRIKE] " .. msg)
             if type(_G.fentiACLog) == "function" then pcall(_G.fentiACLog, "STRIKE", msg) end
             inst:Destroy()
         end
         for _, d in ipairs(RS:GetDescendants()) do
             if fentiStrikeNameMatch(d.Name) then pcall(zap, d, "sweep") end
         end
-        local strike = RS:FindFirstChild("Strike", true)
+        local strike = RS:FindFirstChild(_FN.Strike, true)
         if strike then pcall(zap, strike, "find") end
     end)
 end
@@ -184,13 +191,12 @@ function API.setupStrikeWatch(RS, UIS, m8Enabled)
     for _, t in ipairs(strikeDelaysBundled) do
         task.delay(t, function()
             API.destroyStrike()
-            if t == 8 and m8Enabled and type(_G.fentiModule8Run) == "function" then pcall(function() _G.fentiModule8Run("delay8+Strike") end) end
+            if t == 8 and m8Enabled and type(_G.fentiModule8Run) == "function" then pcall(function() _G.fentiModule8Run("delay8+" .. _FN.Strike) end) end
         end)
     end
     pcall(function()
         RS.ChildAdded:Connect(function(inst)
             if fentiStrikeNameMatch(inst.Name) then
-                print("[fenti-ac] [STRIKE] ChildAdded " .. inst:GetFullName())
                 if type(_G.fentiACLog) == "function" then pcall(_G.fentiACLog, "STRIKE", "ChildAdded " .. inst:GetFullName()) end
                 pcall(function() inst:Destroy() end)
             end
@@ -199,7 +205,6 @@ function API.setupStrikeWatch(RS, UIS, m8Enabled)
     pcall(function()
         RS.DescendantAdded:Connect(function(inst)
             if fentiStrikeNameMatch(inst.Name) then
-                print("[fenti-ac] [STRIKE] DescendantAdded " .. inst:GetFullName())
                 if type(_G.fentiACLog) == "function" then pcall(_G.fentiACLog, "STRIKE", "DescendantAdded " .. inst:GetFullName()) end
                 pcall(function() inst:Destroy() end)
             end
@@ -209,7 +214,6 @@ function API.setupStrikeWatch(RS, UIS, m8Enabled)
         UIS.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed then return end
             if input.KeyCode == Enum.KeyCode.Eight then
-                print("[fenti-ac] [STRIKE] key 8 manual")
                 if type(_G.fentiACLog) == "function" then pcall(_G.fentiACLog, "STRIKE", "key 8 manual sweep") end
                 if m8Enabled and type(_G.fentiModule8Run) == "function" then pcall(function() _G.fentiModule8Run("key8") end) end
                 API.destroyStrike()
@@ -233,7 +237,7 @@ function API.lateInit(ctx)
         if rawget(_G, "FENTI_AGGRESSIVE_INSTANCE_SWEEP") ~= true then return end
         local function nameHit(n)
             if type(n) ~= "string" then return false end
-            if n == "__FUNCTION" or n == "ClientMover" or n == "Strike" or n == "OnHitEvent" then return true end
+            if n == _FN.dunderFunc or n == _FN.ClientMover or n == _FN.Strike or n == _FN.OnHitEvent then return true end
             local l = string.lower(n)
             if string.find(l, "adonis", 1, true) then return true end
             return false
@@ -265,9 +269,9 @@ function API.lateInit(ctx)
         if rawget(_G, "FENTI_NIL_DESTROY_PASS") == true and type(getnilinstances) == "function" then
             pcall(function()
                 for _, v in pairs(getnilinstances()) do
-                    if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                    if v:IsA(_FN.RemoteEvent) or v:IsA(_FN.RemoteFunction) then
                         local n = v.Name
-                        if type(n) == "string" and (string.find(n, "ClientMover", 1, true) or n == "__FUNCTION") then
+                        if type(n) == "string" and (string.find(n, _FN.ClientMover, 1, true) or n == _FN.dunderFunc) then
                             pcall(function()
                                 v:Destroy()
                                 banLog("AC-SWEEP", "[" .. tostring(pass) .. "][nil] " .. n)
@@ -307,7 +311,7 @@ function API.lateInit(ctx)
                     local nm = v.Name
                     if type(nm) == "string" then
                         local l = string.lower(nm)
-                        local hit = nm == "__FUNCTION" or nm == "ClientMover" or nm == "Strike" or nm == "OnHitEvent"
+                        local hit = nm == _FN.dunderFunc or nm == _FN.ClientMover or nm == _FN.Strike or nm == _FN.OnHitEvent
                             or string.find(l, "adonis", 1, true) ~= nil
                         if hit then
                             pcall(function()
@@ -323,9 +327,9 @@ function API.lateInit(ctx)
             end
             if nilPass and typeof(getnilinstances) == "function" then
                 for _, v in pairs(getnilinstances()) do
-                    if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                    if v:IsA(_FN.RemoteEvent) or v:IsA(_FN.RemoteFunction) then
                         local nm = v.Name
-                        if type(nm) == "string" and (nm == "__FUNCTION" or string.find(nm, "ClientMover", 1, true)) then
+                        if type(nm) == "string" and (nm == _FN.dunderFunc or string.find(nm, _FN.ClientMover, 1, true)) then
                             pcall(function()
                                 v:Destroy()
                                 nNil = nNil + 1
@@ -556,14 +560,14 @@ function API.lateInit(ctx)
         end
         local nFound = 0
         for _, d in ipairs(RS:GetDescendants()) do
-            if isFullUuidName(d.Name) and (d:IsA("RemoteEvent") or d:IsA("UnreliableRemoteEvent")) then
+            if isFullUuidName(d.Name) and (d:IsA(_FN.RemoteEvent) or d:IsA(_FN.UnreliableRemoteEvent)) then
                 wireHeartbeatRemote(d)
                 nFound = nFound + 1
             end
         end
         RS.DescendantAdded:Connect(function(inst)
             if not isFullUuidName(inst.Name) then return end
-            if inst:IsA("RemoteEvent") or inst:IsA("UnreliableRemoteEvent") then
+            if inst:IsA(_FN.RemoteEvent) or inst:IsA(_FN.UnreliableRemoteEvent) then
                 wireHeartbeatRemote(inst)
             end
         end)
