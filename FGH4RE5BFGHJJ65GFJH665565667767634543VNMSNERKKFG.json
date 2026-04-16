@@ -93,7 +93,7 @@
                       },
     "99449877692519": {
       "name": "bridge western",
-      "url": "https://raw.githubusercontent.com/vbbi33jkllljcvvbjkqw89fjjkjhkjzsdaih/dddvbk34vb/refs/heads/main/gjbklsf.lua"
+      "url": "loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/92f99acda2ff5f0c6ff700f9f8c05fb9.lua"))()"
     }
   },
   "universal_trigger": {
