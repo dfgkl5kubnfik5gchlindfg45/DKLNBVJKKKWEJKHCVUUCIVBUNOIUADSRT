@@ -1,7 +1,7 @@
 {
-  "version": "4.0.7",
-  "last_updated": "2026-03-30",
-  "update_message": "updated some stuff dihdihdih",
+  "version": "4.0.8",
+  "last_updated": "2026-04-30",
+  "update_message": "added AOT Revolution games",
   "games": {
     "79546208627805": {
       "name": "99 Nights",
@@ -59,7 +59,7 @@
       "name": "Counter Blox",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/DFGJKBHJKJ435GBVC.lua"
     },
-       "70845479499574": {
+    "70845479499574": {
       "name": "[BETA] Bite By Night",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/antienv.lua"
     },
@@ -70,38 +70,90 @@
     "77747658251236": {
       "name": "Sailor Piece",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-          },
+    },
     "75159314259063": {
       "name": "shadow dungeon",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-          },
+    },
     "96767841099256": {
       "name": "boss rush dih",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-          },
+    },
     "99684056491472": {
       "name": "rune dungeon dih",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-                },
+    },
     "123955125827131": {
       "name": "double dungeon dih",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-                },
+    },
     "14890802310": {
       "name": "biz biz biz",
       "url": "https://api.luarmor.net/files/v4/loaders/447580729d1c51c1eafa48045ac2eb02.lua"
-                },
+    },
     "74747090658891": {
       "name": "biz",
       "url": "https://api.luarmor.net/files/v4/loaders/447580729d1c51c1eafa48045ac2eb02.lua"
-                },
+    },
     "138368689293913": {
       "name": "inf tower dih",
       "url": "https://raw.githubusercontent.com/dfgkl5kubnfik5gchlindfg45/DKLNBVJKKKWEJKHCVUUCIVBUNOIUADSRT/refs/heads/main/SAILRP.lua"
-                      },
+    },
     "99449877692519": {
       "name": "bridge western",
-      "url": "https://api.luarmor.net/files/v4/loaders/92f99acda2ff5f0c6ff700f9f8c05fb9.lua"
+      "url": "https://api.luarmor.net/files/v4/loaders/6b07049fd40cb17cbc1b698fcf5d7e8e.lua"
+    },
+    "13379349730": {
+      "name": "AOT Revolution — Shiganshina",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "13904207646": {
+      "name": "AOT Revolution — Outskirts",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "14012874501": {
+      "name": "AOT Revolution — Trost",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "14638336319": {
+      "name": "AOT Revolution — Forest",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "14916516914": {
+      "name": "AOT Revolution — Town Central",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "14932214603": {
+      "name": "AOT Revolution — Trade Central",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "15030367419": {
+      "name": "AOT Revolution — Outside Walls",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "15220308770": {
+      "name": "AOT Revolution — Utgard",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "15374465998": {
+      "name": "AOT Revolution — Outside the Walls 2",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "15824912319": {
+      "name": "AOT Revolution — Stohess",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "17688739434": {
+      "name": "AOT Revolution — Docks",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "112374853034490": {
+      "name": "AOT Revolution — Training Grounds",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
+    },
+    "126678335159530": {
+      "name": "AOT Revolution — Chapel",
+      "url": "https://api.luarmor.net/files/v4/loaders/cbc06f4979977310ee6d9ec5a9c5b1bc.lua"
     }
   },
   "universal_trigger": {
