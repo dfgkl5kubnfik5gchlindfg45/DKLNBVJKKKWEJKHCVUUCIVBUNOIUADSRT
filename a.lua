@@ -1,12 +1,6 @@
--- fenti AC bypass (host on GitHub raw; inject via external loader or _G.FENTI_FETCH_AC_MODULE_URL in hub).
--- Tuning: _G.FENTI_SAFE_AC, FENTI_STRICT_MODE, FENTI_ENABLE_MODULE8, FENTI_ENABLE_ADONIS_GC, FENTI_FORCE_ADONIS_GC,
--- FENTI_TREE_DESTROY_PASS, FENTI_NIL_DESTROY_PASS, FENTI_AGGRESSIVE_INSTANCE_SWEEP, FENTI_M8_PERIOD_SEC, etc.
--- _G.FENTI_AC_SILENT = true — skip the one success print() (reduces console noise / string exposure).
-
 local function _fentiC(...)
     return string.char(...)
 end
--- Runtime-built tokens (string.char) — keeps sensitive instance/class names out of naive string dumps.
 local _FN = {
     strike = _fentiC(115, 116, 114, 105, 107, 101),
     Strike = _fentiC(83, 116, 114, 105, 107, 101),
